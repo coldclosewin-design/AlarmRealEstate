@@ -25,6 +25,7 @@ def main() -> None:
             name=r["name"],
             region_code=r["region_code"],
             apt_filter=r.get("apt_filter", []),
+            area_m2=r.get("area_m2", 0),
         )
         for r in raw
     ]

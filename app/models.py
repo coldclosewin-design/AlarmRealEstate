@@ -8,6 +8,7 @@ class Region:
     name: str           # 표시 이름 (예: "성남시 중원구")
     region_code: str    # 법정동코드 5자리
     apt_filter: list[str] = field(default_factory=list)  # 빈 리스트면 전체
+    area_m2: float = 0  # 0이면 전체 면적
 
 
 @dataclass

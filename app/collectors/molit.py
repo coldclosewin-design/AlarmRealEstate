@@ -64,10 +64,15 @@ def fetch_region_trades(region: Region, months: int = 6) -> list[Transaction]:
         for item in _parse_items(resp.text):
             apt_name = str(item.get("aptNm", "")).strip()
 
-            # 필터가 있으면 해당 단지만 수집
+            # 단지명 필터
             if region.apt_filter:
                 if not any(f in apt_name for f in region.apt_filter):
                     continue
+
+            # 면적 필터 (±5㎡)
+            area = float(item.get("excluUseAr", 0))
+            if region.area_m2 and abs(area - region.area_m2) > 5:
+                continue
 
             price_str = str(item.get("dealAmount", "0")).strip().replace(",", "")
             year = str(item.get("dealYear", "")).strip()
