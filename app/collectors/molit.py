@@ -61,7 +61,12 @@ def fetch_trades(prop: Property, months: int = 3) -> list[Transaction]:
             log.warning("국토부 API 요청 실패 (%s %s): %s", prop.region_code, ym, e)
             continue
 
-        for item in _parse_items(resp.text):
+        items = _parse_items(resp.text)
+        if items:
+            apt_names = sorted(set(str(i.get("aptNm", "")).strip() for i in items))
+            log.info("국토부 %s %s: %d건, 아파트: %s", prop.region_code, ym, len(items), [n for n in apt_names if "해링턴" in n or "신흥" in n] or apt_names[:10])
+
+        for item in items:
             apt_name = str(item.get("aptNm", "")).strip()
             area = float(item.get("excluUseAr", 0))
 
