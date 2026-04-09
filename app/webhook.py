@@ -35,7 +35,7 @@ def build_embeds(report: RegionReport) -> list[dict]:
         return [{
             "title": f"📊 {report.region.name} 실거래 리포트",
             "color": COLOR_DEFAULT,
-            "description": "최근 3개월 실거래 데이터가 없습니다.",
+            "description": "최근 6개월 실거래 데이터가 없습니다.",
             "footer": {"text": f"출처: 국토교통부 실거래가  |  {now}"},
         }]
 
@@ -61,7 +61,7 @@ def build_embeds(report: RegionReport) -> list[dict]:
             "title": f"📊 {report.region.name} 실거래 리포트" + (f" ({i // chunk_size + 1})" if i > 0 else ""),
             "color": COLOR_DEFAULT,
             "description": "\n".join(chunk),
-            "footer": {"text": f"총 {len(report.transactions)}건 (최근 3개월)  |  출처: 국토교통부  |  {now}"},
+            "footer": {"text": f"총 {len(report.transactions)}건 (최근 6개월)  |  출처: 국토교통부  |  {now}"},
         }
         embeds.append(embed)
 

@@ -41,8 +41,8 @@ def _parse_items(xml_text: str) -> list[dict]:
     return item
 
 
-def fetch_region_trades(region: Region, months: int = 3) -> list[Transaction]:
-    """지역 전체의 최근 실거래 내역을 조회한다."""
+def fetch_region_trades(region: Region, months: int = 6) -> list[Transaction]:
+    """지역의 최근 실거래 내역을 조회한다. apt_filter가 있으면 해당 단지만."""
     transactions: list[Transaction] = []
 
     for ym in _deal_months(months):
@@ -62,6 +62,13 @@ def fetch_region_trades(region: Region, months: int = 3) -> list[Transaction]:
             continue
 
         for item in _parse_items(resp.text):
+            apt_name = str(item.get("aptNm", "")).strip()
+
+            # 필터가 있으면 해당 단지만 수집
+            if region.apt_filter:
+                if not any(f in apt_name for f in region.apt_filter):
+                    continue
+
             price_str = str(item.get("dealAmount", "0")).strip().replace(",", "")
             year = str(item.get("dealYear", "")).strip()
             month = str(item.get("dealMonth", "")).strip().zfill(2)
@@ -69,7 +76,7 @@ def fetch_region_trades(region: Region, months: int = 3) -> list[Transaction]:
 
             transactions.append(
                 Transaction(
-                    apt_name=str(item.get("aptNm", "")).strip(),
+                    apt_name=apt_name,
                     price_만원=int(price_str),
                     date=f"{year}-{month}-{day}",
                     floor=str(item.get("floor", "")).strip(),

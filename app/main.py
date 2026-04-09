@@ -20,7 +20,14 @@ def main() -> None:
     raw = load_properties()
     log.info("관심 지역 %d건 로드", len(raw))
 
-    regions = [Region(name=r["name"], region_code=r["region_code"]) for r in raw]
+    regions = [
+        Region(
+            name=r["name"],
+            region_code=r["region_code"],
+            apt_filter=r.get("apt_filter", []),
+        )
+        for r in raw
+    ]
 
     reports = []
     for region in regions:
