@@ -1,20 +1,19 @@
 """Discord 웹훅 전송 + 임베드 빌더."""
 
 import logging
+from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 
 import httpx
 
 from app.config import DISCORD_WEBHOOK_URL
-from app.models import PriceReport
+from app.models import RegionReport
 
 log = logging.getLogger(__name__)
 
 KST = timezone(timedelta(hours=9))
 
-COLOR_UP = 0x2ECC71      # 초록
-COLOR_DOWN = 0xE74C3C     # 빨강
-COLOR_STABLE = 0x95A5A6   # 회색
+COLOR_DEFAULT = 0x3498DB  # 파란색
 
 
 def format_price(만원: int) -> str:
@@ -28,53 +27,56 @@ def format_price(만원: int) -> str:
     return f"{만원:,}만원"
 
 
-def _embed_color(report: PriceReport) -> int:
-    """최근 거래가 있으면 초록, 없으면 회색."""
-    if report.recent_transactions:
-        return COLOR_UP
-    return COLOR_STABLE
-
-
-def build_embed(report: PriceReport) -> dict:
-    """PriceReport를 Discord 임베드 dict로 변환한다."""
+def build_embeds(report: RegionReport) -> list[dict]:
+    """RegionReport를 Discord 임베드 목록으로 변환한다."""
     now = datetime.now(KST).strftime("%Y-%m-%d %H:%M KST")
-    fields = []
 
-    if report.recent_transactions:
-        lines = []
-        for tx in report.recent_transactions[:5]:
-            lines.append(
-                f"`{tx.date}`  {tx.area_m2:.0f}m²  {tx.floor}층  **{format_price(tx.price_만원)}**"
-            )
-        fields.append({
-            "name": "최근 실거래 (국토교통부)",
-            "value": "\n".join(lines),
-            "inline": False,
-        })
-    else:
-        fields.append({
-            "name": "알림",
-            "value": "최근 3개월 실거래 데이터가 없습니다.",
-            "inline": False,
-        })
+    if not report.transactions:
+        return [{
+            "title": f"📊 {report.region.name} 실거래 리포트",
+            "color": COLOR_DEFAULT,
+            "description": "최근 3개월 실거래 데이터가 없습니다.",
+            "footer": {"text": f"출처: 국토교통부 실거래가  |  {now}"},
+        }]
 
-    return {
-        "title": f"🏠 {report.prop.name}",
-        "color": _embed_color(report),
-        "fields": fields,
-        "footer": {
-            "text": f"출처: 국토교통부 실거래가  |  {now}"
-        },
-    }
+    # 아파트별로 그룹핑
+    by_apt: dict[str, list] = defaultdict(list)
+    for tx in report.transactions:
+        by_apt[tx.apt_name].append(tx)
+
+    # 요약 임베드: 아파트별 최근 거래 1건씩
+    summary_lines = []
+    for apt_name in sorted(by_apt.keys()):
+        latest = by_apt[apt_name][0]  # 이미 날짜순 정렬됨
+        summary_lines.append(
+            f"**{apt_name}**  {latest.area_m2:.0f}m²  {format_price(latest.price_만원)}  `{latest.date}`"
+        )
+
+    # Discord 임베드 description은 4096자 제한
+    embeds = []
+    chunk_size = 30  # 아파트 30개씩 한 임베드
+    for i in range(0, len(summary_lines), chunk_size):
+        chunk = summary_lines[i : i + chunk_size]
+        embed = {
+            "title": f"📊 {report.region.name} 실거래 리포트" + (f" ({i // chunk_size + 1})" if i > 0 else ""),
+            "color": COLOR_DEFAULT,
+            "description": "\n".join(chunk),
+            "footer": {"text": f"총 {len(report.transactions)}건 (최근 3개월)  |  출처: 국토교통부  |  {now}"},
+        }
+        embeds.append(embed)
+
+    return embeds
 
 
-def send_report(reports: list[PriceReport]) -> None:
+def send_report(reports: list[RegionReport]) -> None:
     """Discord 웹훅으로 리포트를 전송한다."""
     if not DISCORD_WEBHOOK_URL:
         log.error("DISCORD_WEBHOOK_URL이 설정되지 않았습니다")
         return
 
-    embeds = [build_embed(r) for r in reports]
+    embeds = []
+    for r in reports:
+        embeds.extend(build_embeds(r))
 
     for i in range(0, len(embeds), 10):
         batch = embeds[i : i + 10]

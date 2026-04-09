@@ -7,7 +7,7 @@ import httpx
 import xmltodict
 
 from app.config import MOLIT_API_KEY
-from app.models import Property, Transaction
+from app.models import Region, Transaction
 
 log = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ def _deal_months(months: int = 3) -> list[str]:
     for i in range(months):
         dt = now - timedelta(days=30 * i)
         result.append(dt.strftime("%Y%m"))
-    return list(dict.fromkeys(result))  # 중복 제거, 순서 유지
+    return list(dict.fromkeys(result))
 
 
 def _parse_items(xml_text: str) -> list[dict]:
@@ -41,15 +41,15 @@ def _parse_items(xml_text: str) -> list[dict]:
     return item
 
 
-def fetch_trades(prop: Property, months: int = 3) -> list[Transaction]:
-    """특정 부동산의 최근 실거래 내역을 조회한다."""
+def fetch_region_trades(region: Region, months: int = 3) -> list[Transaction]:
+    """지역 전체의 최근 실거래 내역을 조회한다."""
     transactions: list[Transaction] = []
 
     for ym in _deal_months(months):
         url = (
             f"{BASE_URL}"
             f"?serviceKey={MOLIT_API_KEY}"
-            f"&LAWD_CD={prop.region_code}"
+            f"&LAWD_CD={region.region_code}"
             f"&DEAL_YMD={ym}"
             f"&pageNo=1"
             f"&numOfRows=9999"
@@ -58,24 +58,10 @@ def fetch_trades(prop: Property, months: int = 3) -> list[Transaction]:
             resp = httpx.get(url, timeout=30)
             resp.raise_for_status()
         except httpx.HTTPError as e:
-            log.warning("국토부 API 요청 실패 (%s %s): %s", prop.region_code, ym, e)
+            log.warning("국토부 API 요청 실패 (%s %s): %s", region.region_code, ym, e)
             continue
 
-        items = _parse_items(resp.text)
-        if items:
-            apt_names = sorted(set(str(i.get("aptNm", "")).strip() for i in items))
-            log.info("국토부 %s %s: %d건, 아파트: %s", prop.region_code, ym, len(items), [n for n in apt_names if "해링턴" in n or "신흥" in n] or apt_names[:10])
-
-        for item in items:
-            apt_name = str(item.get("aptNm", "")).strip()
-            area = float(item.get("excluUseAr", 0))
-
-            # 단지명 포함 여부 + 면적 ±5㎡ 필터
-            if prop.complex_name not in apt_name:
-                continue
-            if abs(area - prop.area_m2) > 5:
-                continue
-
+        for item in _parse_items(resp.text):
             price_str = str(item.get("dealAmount", "0")).strip().replace(",", "")
             year = str(item.get("dealYear", "")).strip()
             month = str(item.get("dealMonth", "")).strip().zfill(2)
@@ -83,15 +69,15 @@ def fetch_trades(prop: Property, months: int = 3) -> list[Transaction]:
 
             transactions.append(
                 Transaction(
-                    property_name=prop.name,
+                    apt_name=str(item.get("aptNm", "")).strip(),
                     price_만원=int(price_str),
                     date=f"{year}-{month}-{day}",
                     floor=str(item.get("floor", "")).strip(),
-                    area_m2=area,
+                    area_m2=float(item.get("excluUseAr", 0)),
                     deal_type="매매",
                 )
             )
 
     transactions.sort(key=lambda t: t.date, reverse=True)
-    log.info("국토부 실거래 %s: %d건 수집", prop.name, len(transactions))
+    log.info("국토부 실거래 %s: %d건 수집", region.name, len(transactions))
     return transactions

@@ -4,24 +4,22 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class Property:
-    name: str
-    region_code: str  # 법정동코드 5자리
-    complex_name: str
-    area_m2: float
+class Region:
+    name: str           # 표시 이름 (예: "성남시 중원구")
+    region_code: str    # 법정동코드 5자리
 
 
 @dataclass
 class Transaction:
-    property_name: str
+    apt_name: str
     price_만원: int
-    date: str  # YYYY-MM-DD
+    date: str           # YYYY-MM-DD
     floor: str = ""
     area_m2: float = 0.0
     deal_type: str = "매매"
 
 
 @dataclass
-class PriceReport:
-    prop: Property
-    recent_transactions: list[Transaction] = field(default_factory=list)
+class RegionReport:
+    region: Region
+    transactions: list[Transaction] = field(default_factory=list)

@@ -1,14 +1,6 @@
 [
   {
-    "name": "해링턴스퀘어신흥역 84m²",
-    "region_code": "41131",
-    "complex_name": "해링턴스퀘어신흥역",
-    "area_m2": 84
-  },
-  {
-    "name": "해링턴스퀘어신흥역 59m²",
-    "region_code": "41131",
-    "complex_name": "해링턴스퀘어신흥역",
-    "area_m2": 59
+    "name": "성남시 중원구",
+    "region_code": "41131"
   }
 ]

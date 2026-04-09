@@ -3,7 +3,7 @@
 import logging
 
 from app.config import load_properties
-from app.models import Property, PriceReport
+from app.models import Region, RegionReport
 from app.collectors import molit
 from app.webhook import send_report
 
@@ -14,35 +14,21 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-def build_report(prop: Property) -> PriceReport:
-    """하나의 부동산에 대해 데이터를 수집하고 리포트를 생성한다."""
-    transactions = molit.fetch_trades(prop)
-    return PriceReport(prop=prop, recent_transactions=transactions)
-
-
 def main() -> None:
     log.info("부동산 시세 알람 시작")
 
-    raw_properties = load_properties()
-    log.info("관심 부동산 %d건 로드", len(raw_properties))
+    raw = load_properties()
+    log.info("관심 지역 %d건 로드", len(raw))
 
-    properties = [
-        Property(
-            name=p["name"],
-            region_code=p["region_code"],
-            complex_name=p["complex_name"],
-            area_m2=p["area_m2"],
-        )
-        for p in raw_properties
-    ]
+    regions = [Region(name=r["name"], region_code=r["region_code"]) for r in raw]
 
     reports = []
-    for prop in properties:
+    for region in regions:
         try:
-            report = build_report(prop)
-            reports.append(report)
+            transactions = molit.fetch_region_trades(region)
+            reports.append(RegionReport(region=region, transactions=transactions))
         except Exception:
-            log.exception("리포트 생성 실패: %s", prop.name)
+            log.exception("리포트 생성 실패: %s", region.name)
 
     if reports:
         send_report(reports)
