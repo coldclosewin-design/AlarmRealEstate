@@ -46,15 +46,17 @@ def fetch_trades(prop: Property, months: int = 3) -> list[Transaction]:
     transactions: list[Transaction] = []
 
     for ym in _deal_months(months):
-        params = {
-            "serviceKey": MOLIT_API_KEY,
-            "LAWD_CD": prop.region_code,
-            "DEAL_YMD": ym,
-            "pageNo": "1",
-            "numOfRows": "9999",
-        }
+        # serviceKey는 이미 URL 인코딩된 상태이므로 URL에 직접 삽입
+        url = (
+            f"{BASE_URL}"
+            f"?serviceKey={MOLIT_API_KEY}"
+            f"&LAWD_CD={prop.region_code}"
+            f"&DEAL_YMD={ym}"
+            f"&pageNo=1"
+            f"&numOfRows=9999"
+        )
         try:
-            resp = httpx.get(BASE_URL, params=params, timeout=30)
+            resp = httpx.get(url, timeout=30)
             resp.raise_for_status()
         except httpx.HTTPError as e:
             log.warning("국토부 API 요청 실패 (%s %s): %s", prop.region_code, ym, e)
