@@ -28,25 +28,10 @@ def format_price(만원: int) -> str:
     return f"{만원:,}만원"
 
 
-def _trend(current: int | None, prev: int | None) -> tuple[str, float | None]:
-    """변동 화살표와 변동률을 반환한다."""
-    if current is None or prev is None or prev == 0:
-        return "─", None
-    change_pct = (current - prev) / prev * 100
-    if change_pct > 0.1:
-        return "▲", change_pct
-    elif change_pct < -0.1:
-        return "▼", change_pct
-    return "─", 0.0
-
-
 def _embed_color(report: PriceReport) -> int:
-    """시세 변동에 따른 임베드 색상을 결정한다."""
-    arrow, _ = _trend(report.naver_price_만원, report.naver_prev_price_만원)
-    if arrow == "▲":
+    """최근 거래가 있으면 초록, 없으면 회색."""
+    if report.recent_transactions:
         return COLOR_UP
-    elif arrow == "▼":
-        return COLOR_DOWN
     return COLOR_STABLE
 
 
@@ -55,29 +40,6 @@ def build_embed(report: PriceReport) -> dict:
     now = datetime.now(KST).strftime("%Y-%m-%d %H:%M KST")
     fields = []
 
-    # 매매 시세 (네이버)
-    if report.naver_price_만원 is not None:
-        arrow, pct = _trend(report.naver_price_만원, report.naver_prev_price_만원)
-        value = f"현재: **{format_price(report.naver_price_만원)}**"
-        if report.naver_prev_price_만원 is not None:
-            diff = report.naver_price_만원 - report.naver_prev_price_만원
-            sign = "+" if diff >= 0 else ""
-            value += f"\n전월: {format_price(report.naver_prev_price_만원)}"
-            value += f"\n변동: {arrow} {sign}{pct:.1f}% ({sign}{format_price(abs(diff))})" if pct is not None else ""
-        fields.append({"name": "매매 시세", "value": value, "inline": True})
-
-    # 전세 시세 (네이버)
-    if report.jeonse_price_만원 is not None:
-        arrow, pct = _trend(report.jeonse_price_만원, report.jeonse_prev_price_만원)
-        value = f"현재: **{format_price(report.jeonse_price_만원)}**"
-        if report.jeonse_prev_price_만원 is not None:
-            diff = report.jeonse_price_만원 - report.jeonse_prev_price_만원
-            sign = "+" if diff >= 0 else ""
-            value += f"\n전월: {format_price(report.jeonse_prev_price_만원)}"
-            value += f"\n변동: {arrow} {sign}{pct:.1f}% ({sign}{format_price(abs(diff))})" if pct is not None else ""
-        fields.append({"name": "전세 시세", "value": value, "inline": True})
-
-    # 최근 실거래 (국토부)
     if report.recent_transactions:
         lines = []
         for tx in report.recent_transactions[:5]:
@@ -89,27 +51,19 @@ def build_embed(report: PriceReport) -> dict:
             "value": "\n".join(lines),
             "inline": False,
         })
-
-    # 데이터 없는 경우
-    if not fields:
+    else:
         fields.append({
             "name": "알림",
-            "value": "수집된 시세 데이터가 없습니다.",
+            "value": "최근 3개월 실거래 데이터가 없습니다.",
             "inline": False,
         })
-
-    sources = []
-    if report.recent_transactions:
-        sources.append("국토교통부 실거래가")
-    if report.naver_price_만원 is not None:
-        sources.append("네이버 부동산")
 
     return {
         "title": f"🏠 {report.prop.name}",
         "color": _embed_color(report),
         "fields": fields,
         "footer": {
-            "text": f"출처: {' / '.join(sources) or '없음'}  |  {now}"
+            "text": f"출처: 국토교통부 실거래가  |  {now}"
         },
     }
 
@@ -122,7 +76,6 @@ def send_report(reports: list[PriceReport]) -> None:
 
     embeds = [build_embed(r) for r in reports]
 
-    # Discord 웹훅은 한 번에 최대 10개 임베드
     for i in range(0, len(embeds), 10):
         batch = embeds[i : i + 10]
         payload = {

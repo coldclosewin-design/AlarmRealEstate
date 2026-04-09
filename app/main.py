@@ -4,7 +4,7 @@ import logging
 
 from app.config import load_properties
 from app.models import Property, PriceReport
-from app.collectors import molit, naver
+from app.collectors import molit
 from app.webhook import send_report
 
 logging.basicConfig(
@@ -16,20 +16,8 @@ log = logging.getLogger(__name__)
 
 def build_report(prop: Property) -> PriceReport:
     """하나의 부동산에 대해 데이터를 수집하고 리포트를 생성한다."""
-    # 국토부 실거래가 수집
     transactions = molit.fetch_trades(prop)
-
-    # 네이버 시세 수집
-    naver_prices = naver.fetch_prices(prop)
-
-    return PriceReport(
-        prop=prop,
-        naver_price_만원=naver_prices["매매_만원"],
-        naver_prev_price_만원=naver_prices["매매_prev_만원"],
-        jeonse_price_만원=naver_prices["전세_만원"],
-        jeonse_prev_price_만원=naver_prices["전세_prev_만원"],
-        recent_transactions=transactions,
-    )
+    return PriceReport(prop=prop, recent_transactions=transactions)
 
 
 def main() -> None:
@@ -44,7 +32,6 @@ def main() -> None:
             region_code=p["region_code"],
             complex_name=p["complex_name"],
             area_m2=p["area_m2"],
-            naver_complex_id=p.get("naver_complex_id", ""),
         )
         for p in raw_properties
     ]
