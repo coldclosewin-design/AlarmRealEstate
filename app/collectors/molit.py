@@ -12,8 +12,8 @@ from app.models import Property, Transaction
 log = logging.getLogger(__name__)
 
 BASE_URL = (
-    "http://openapi.molit.go.kr"
-    "/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc"
+    "https://apis.data.go.kr"
+    "/1613000/RTMSDataSvcAptTradeDev"
     "/getRTMSDataSvcAptTradeDev"
 )
 
