@@ -1,8 +1,14 @@
 [
   {
-    "name": "래미안 원베일리",
-    "region_code": "11650",
-    "complex_name": "래미안원베일리",
-    "area_m2": 84.97
+    "name": "해링턴스퀘어신흥역 84m²",
+    "region_code": "41131",
+    "complex_name": "해링턴스퀘어신흥역",
+    "area_m2": 84
+  },
+  {
+    "name": "해링턴스퀘어신흥역 59m²",
+    "region_code": "41131",
+    "complex_name": "해링턴스퀘어신흥역",
+    "area_m2": 59
   }
 ]

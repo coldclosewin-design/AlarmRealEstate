@@ -46,7 +46,6 @@ def fetch_trades(prop: Property, months: int = 3) -> list[Transaction]:
     transactions: list[Transaction] = []
 
     for ym in _deal_months(months):
-        # serviceKey는 이미 URL 인코딩된 상태이므로 URL에 직접 삽입
         url = (
             f"{BASE_URL}"
             f"?serviceKey={MOLIT_API_KEY}"
@@ -62,16 +61,9 @@ def fetch_trades(prop: Property, months: int = 3) -> list[Transaction]:
             log.warning("국토부 API 요청 실패 (%s %s): %s", prop.region_code, ym, e)
             continue
 
-        items = _parse_items(resp.text)
-        if items:
-            sample = items[0]
-            log.info("국토부 %s %s: 전체 %d건, 샘플 필드: %s", prop.region_code, ym, len(items), list(sample.keys())[:20])
-            apt_names = sorted(set(str(i.get("아파트", i.get("aptNm", ""))).strip() for i in items))
-            log.info("국토부 아파트명 목록: %s", apt_names[:20])
-
-        for item in items:
-            apt_name = str(item.get("아파트", "")).strip()
-            area = float(item.get("전용면적", 0))
+        for item in _parse_items(resp.text):
+            apt_name = str(item.get("aptNm", "")).strip()
+            area = float(item.get("excluUseAr", 0))
 
             # 단지명 포함 여부 + 면적 ±5㎡ 필터
             if prop.complex_name not in apt_name:
@@ -79,27 +71,22 @@ def fetch_trades(prop: Property, months: int = 3) -> list[Transaction]:
             if abs(area - prop.area_m2) > 5:
                 continue
 
-            year = str(item.get("년", "")).strip()
-            month = str(item.get("월", "")).strip().zfill(2)
-            day = str(item.get("일", "")).strip().zfill(2)
-            price_str = str(item.get("거래금액", "0")).strip().replace(",", "")
+            price_str = str(item.get("dealAmount", "0")).strip().replace(",", "")
+            year = str(item.get("dealYear", "")).strip()
+            month = str(item.get("dealMonth", "")).strip().zfill(2)
+            day = str(item.get("dealDay", "")).strip().zfill(2)
 
             transactions.append(
                 Transaction(
                     property_name=prop.name,
                     price_만원=int(price_str),
                     date=f"{year}-{month}-{day}",
-                    floor=str(item.get("층", "")).strip(),
+                    floor=str(item.get("floor", "")).strip(),
                     area_m2=area,
-                    source="molit",
                     deal_type="매매",
                 )
             )
 
     transactions.sort(key=lambda t: t.date, reverse=True)
-    log.info(
-        "국토부 실거래 %s: %d건 수집",
-        prop.name,
-        len(transactions),
-    )
+    log.info("국토부 실거래 %s: %d건 수집", prop.name, len(transactions))
     return transactions
