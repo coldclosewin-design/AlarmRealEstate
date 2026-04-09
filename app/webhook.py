@@ -28,7 +28,7 @@ def format_price(만원: int) -> str:
 
 
 def build_embeds(report: RegionReport) -> list[dict]:
-    """RegionReport를 Discord 임베드 목록으로 변환한다."""
+    """RegionReport를 단지별 최근 5건씩 Discord 임베드로 변환한다."""
     now = datetime.now(KST).strftime("%Y-%m-%d %H:%M KST")
 
     if not report.transactions:
@@ -44,28 +44,26 @@ def build_embeds(report: RegionReport) -> list[dict]:
     for tx in report.transactions:
         by_apt[tx.apt_name].append(tx)
 
-    # 요약 임베드: 아파트별 최근 거래 1건씩
-    summary_lines = []
+    # 단지별 최근 5건씩 fields로 구성
+    fields = []
     for apt_name in sorted(by_apt.keys()):
-        latest = by_apt[apt_name][0]  # 이미 날짜순 정렬됨
-        summary_lines.append(
-            f"**{apt_name}**  {latest.area_m2:.0f}m²  {format_price(latest.price_만원)}  `{latest.date}`"
-        )
+        txs = by_apt[apt_name][:5]
+        lines = []
+        for tx in txs:
+            lines.append(f"`{tx.date}`  {tx.area_m2:.0f}m²  {tx.floor}층  **{format_price(tx.price_만원)}**")
+        fields.append({
+            "name": f"🏠 {apt_name} ({len(by_apt[apt_name])}건)",
+            "value": "\n".join(lines),
+            "inline": False,
+        })
 
-    # Discord 임베드 description은 4096자 제한
-    embeds = []
-    chunk_size = 30  # 아파트 30개씩 한 임베드
-    for i in range(0, len(summary_lines), chunk_size):
-        chunk = summary_lines[i : i + chunk_size]
-        embed = {
-            "title": f"📊 {report.region.name} 실거래 리포트" + (f" ({i // chunk_size + 1})" if i > 0 else ""),
-            "color": COLOR_DEFAULT,
-            "description": "\n".join(chunk),
-            "footer": {"text": f"총 {len(report.transactions)}건 (최근 6개월)  |  출처: 국토교통부  |  {now}"},
-        }
-        embeds.append(embed)
-
-    return embeds
+    # Discord 임베드는 fields 최대 25개, 단지 4개면 충분
+    return [{
+        "title": f"📊 {report.region.name} 실거래 리포트",
+        "color": COLOR_DEFAULT,
+        "fields": fields,
+        "footer": {"text": f"총 {len(report.transactions)}건 (최근 6개월)  |  출처: 국토교통부  |  {now}"},
+    }]
 
 
 def send_report(reports: list[RegionReport]) -> None:
