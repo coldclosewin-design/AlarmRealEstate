@@ -44,9 +44,10 @@ def build_embeds(report: RegionReport) -> list[dict]:
     for tx in report.transactions:
         by_apt[tx.apt_name].append(tx)
 
-    # 단지별 최근 5건씩 fields로 구성
+    # 단지별 최근 5건씩 fields로 구성 (최신 거래가 있는 단지가 위로)
     fields = []
-    for apt_name in sorted(by_apt.keys()):
+    sorted_apts = sorted(by_apt.keys(), key=lambda name: by_apt[name][0].date, reverse=True)
+    for apt_name in sorted_apts:
         txs = by_apt[apt_name][:5]
         lines = []
         for tx in txs:
