@@ -16,6 +16,12 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Restore state cache
+        uses: actions/cache@v4
+        with:
+          path: data/sent_transactions.json
+          key: sent-transactions
+
       - name: Install dependencies
         run: pip install -r requirements.txt
 

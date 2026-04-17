@@ -33,9 +33,9 @@ def build_embeds(report: RegionReport) -> list[dict]:
 
     if not report.transactions:
         return [{
-            "title": f"📊 {report.region.name} 실거래 리포트",
+            "title": f"📊 {report.region.name} — 새 거래 없음",
             "color": COLOR_DEFAULT,
-            "description": "최근 6개월 실거래 데이터가 없습니다.",
+            "description": "새로운 실거래 데이터가 없습니다.",
             "footer": {"text": f"출처: 국토교통부 실거래가  |  {now}"},
         }]
 
@@ -59,10 +59,10 @@ def build_embeds(report: RegionReport) -> list[dict]:
 
     # Discord 임베드는 fields 최대 25개, 단지 4개면 충분
     return [{
-        "title": f"📊 {report.region.name} 실거래 리포트",
+        "title": f"🆕 {report.region.name} 새 실거래 감지",
         "color": COLOR_DEFAULT,
         "fields": fields,
-        "footer": {"text": f"총 {len(report.transactions)}건 (최근 6개월)  |  출처: 국토교통부  |  {now}"},
+        "footer": {"text": f"새 거래 {len(report.transactions)}건  |  출처: 국토교통부  |  {now}"},
     }]
 
 
