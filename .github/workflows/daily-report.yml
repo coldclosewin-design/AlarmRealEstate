@@ -20,7 +20,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/sent_transactions.json
-          key: sent-transactions
+          key: sent-transactions-${{ github.run_id }}
+          restore-keys: |
+            sent-transactions-
 
       - name: Install dependencies
         run: pip install -r requirements.txt
